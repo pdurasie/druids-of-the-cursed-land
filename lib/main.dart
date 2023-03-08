@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:guardians_of_the_cursed_land/presentation/widgets/home.dart';
+import 'package:druids_of_the_cursed_land/presentation/widgets/home.dart';
 
 void main() {
   runApp(const MyApp());

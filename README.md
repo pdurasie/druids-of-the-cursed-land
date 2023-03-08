@@ -1,4 +1,4 @@
-# guardians_of_the_cursed_land
+# druids_of_the_cursed_land
 
 A location based mobile game built in Flutter.
 

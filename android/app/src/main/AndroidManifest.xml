@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="de.pdurasie.guardians_of_the_cursed_land">
+    package="de.pdurasie.druids_of_the_cursed_land">
    <application
         android:label="Guardians of the Cursed Land"
         android:name="${applicationName}"
