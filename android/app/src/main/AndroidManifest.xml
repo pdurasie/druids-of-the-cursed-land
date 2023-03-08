@@ -1,9 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="de.pdurasie.gotcl.guardians_of_the_cursed_land">
+    package="de.pdurasie.guardians_of_the_cursed_land">
    <application
-        android:label="guardians_of_the_cursed_land"
+        android:label="Guardians of the Cursed Land"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+       <meta-data android:name="com.google.android.geo.API_KEY"
+           android:value="AIzaSyDTSuZKv41Qw3OqsD5y7-C0Vk3AIM4R0ic"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
