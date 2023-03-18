@@ -1,13 +1,51 @@
 services:
+  osm2pgsql:
+    build:
+      context: osm2pgsql/
+    command: bash -c "sleep 5; /usr/local/bin/osm-importer.sh"
+    depends_on:
+      - postgis_db
+    links:
+      - postgis_db
+    restart: on-failure:2
+    networks:
+      - docker-network
+    #volumes:
+    #  - ./berlin.osm.pbf
   postgis_db:
-    build: ../container-postgis/
-    restart: unless-stopped
-    container_name: postgis
-    hostname: postgis
-    environment:
-      - POSTGRES_PASSWORD=123456
+    image: postgis/postgis
+    command:
+      # See https://osm2pgsql.org/doc/manual.html#tuning-the-postgresql-server
+      - "postgres"
+      - "-c"
+      - "shared_buffers=1GB"
+      - "-c"
+      - "work_mem=50MB"
+      - "-c"
+      - "maintenance_work_mem=4GB"
+      - "-c"
+      - "autovacuum_work_mem=1GB"
+      - "-c"
+      - "wal_level=minimal"
+      - "-c"
+      - "checkpoint_timeout=60min"
+      - "-c"
+      - "max_wal_size=4GB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "max_wal_senders=0"
+      - "-c"
+      - "random_page_cost=1.0"
     ports:
-      - "5432:5432"
+      - "0.0.0.0:5432:5432"
+    environment:
+      ALLOW_IP_RANGE: "0.0.0.0/0"
+      POSTGRES_USER: docker
+      POSTGRES_PASSWORD: docker
+      PG_PORT: 5432
+    networks:
+      - docker-network
   dashboard:
     image: dpage/pgadmin4:latest
     container_name: pgadmin4
@@ -16,11 +54,15 @@ services:
       - PGADMIN_DEFAULT_PASSWORD=admin
     ports:
       - "80:80"
+    networks:
+      - docker-network
   app:
-    build: /container-python-scripts/
+    build: container-python-scripts/
     container_name: python_scripts
     image: my-python-scripts
     depends_on:
       - postgis_db
     ports:
       - "8081:3000"
+networks:
+  docker-network:

@@ -6,6 +6,7 @@ from shapely.geometry import LineString
 import csv
 import shapely.wkt as wkt
 
+
 def get_SQL_command(xmin: float, ymin: float, xmax: float, ymax: float, srd: int) -> str:
     return """WITH pois_query AS
   (SELECT DISTINCT ON (\"name\") *
@@ -87,7 +88,8 @@ UNION ALL
 SELECT \"osm_id\",\"access\",\"amenity\",\"area\",\"barrier\",\"bicycle\",\"brand\",\"bridge\",\"boundary\",\"building\",\"culvert\",\"embankment\",\"foot\",\"harbour\",\"highway\",\"landuse\",\"leisure\",\"lock\",\"name\",\"natural\",\"place\",\"surface\",\"tourism\", NULL AS \"tracktype\",\"water\",\"waterway\",\"wetland\",\"wood\",\"tags\",\"way\"
 FROM pois_query
 WHERE ST_Contains(ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, 4326), \"way\")
-   OR ST_Intersects(ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, 4326), \"way\");""".format(min_lon=xmin, min_lat=ymin, max_lon=xmax, max_lat=ymax)
+   OR ST_Intersects(ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, 4326), \"way\");""".format(
+        min_lon=xmin, min_lat=ymin, max_lon=xmax, max_lat=ymax)
 
 
 # Connect to the database
@@ -102,7 +104,7 @@ geo_hashes = ["u33677", "u33dh4", "u33e5h"]
 #     for object in objects:
 #         geo_hashes.append(object)
 
-#cur.execute("CREATE TABLE berlin_regions(SERIAL PRIMARY KEY)")
+# cur.execute("CREATE TABLE berlin_regions(SERIAL PRIMARY KEY)")
 
 for geohash in geo_hashes:
     # Retrieve the polygons from the database that fit the given geohash
@@ -156,7 +158,7 @@ for geohash in geo_hashes:
         #     geometry_wkt = intersecting_geometry.wkt
         # TODO add more columns to this than id and polygon, also the area it covers!
         # cur.execute(
-             "INSERT INTO berlin_regions (\"osm_id\",\"access\",\"amenity\",\"area\",\"barrier\",\"bicycle\",\"brand\",\"bridge\",\"boundary\",\"building\",\"culvert\",\"embankment\",\"foot\",\"harbour\",\"highway\",\"landuse\",\"leisure\",\"lock\",\"name\",\"natural\",\"place\",\"surface\",\"tourism\", NULL AS \"tracktype\",\"water\",\"waterway\",\"wetland\",\"wood\",\"tags\",\"way\") VALUES (%s, ST_GeomFromText(%s));", (parent_id, geometry_wkt))
+        # "INSERT INTO berlin_regions (\"osm_id\",\"access\",\"amenity\",\"area\",\"barrier\",\"bicycle\",\"brand\",\"bridge\",\"boundary\",\"building\",\"culvert\",\"embankment\",\"foot\",\"harbour\",\"highway\",\"landuse\",\"leisure\",\"lock\",\"name\",\"natural\",\"place\",\"surface\",\"tourism\", NULL AS \"tracktype\",\"water\",\"waterway\",\"wetland\",\"wood\",\"tags\",\"way\") VALUES (%s, ST_GeomFromText(%s));", (parent_id, geometry_wkt))
 
 # Commit the changes and close the connection
 conn.commit()
