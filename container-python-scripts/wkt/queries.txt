@@ -1,0 +1,158 @@
+LINE - roads_query
+
+WITH roads_query AS (
+SELECT t.*
+FROM (SELECT *, row_number()
+                 OVER(
+                   ORDER BY osm_id ASC) AS row
+FROM   PUBLIC.planet_osm_line
+WHERE  ( "access" IN ( 'yes', 'designated' )
+          OR "access" IS NULL )
+       AND ( "highway" IN ( 'living_street', 'bridleway' ) )
+       AND St_length(St_transform(way, 3857)) > 100
+	  ) t
+UNION ALL
+SELECT t.*
+FROM   (SELECT *,
+               Row_number()
+                 OVER(
+                   ORDER BY osm_id ASC) AS row
+        FROM   PUBLIC.planet_osm_line
+        WHERE  ( "access" IN ( 'yes', 'designated' )
+                  OR "access" IS NULL )
+		AND St_length(St_transform(way, 3857)) > 250
+               AND ( "highway" = 'footway' )) 
+t WHERE  t.row % 2 = 0
+)
+
+POLYGON
+
+WITH polygons_query AS (
+SELECT ST_AsText(ST_Transform(way, 4326))
+FROM public.planet_osm_polygon
+WHERE ("access" IN ('yes',
+                    'permissive',
+                    'permit',
+                    'destination',
+                    'designated')
+       OR "access" IS NULL)
+  AND ("foot" IN ('yes',
+                  'designated',
+                  'permissive')
+       OR "leisure"='park'
+       OR "landuse"='forest'
+       OR "natural"='water'
+       OR "highway" IN ('residential',
+                        'living_street',
+                        'pedestrian',
+                        'footway',
+                        'bridleway',
+                        'path',
+                        'sidewalk'))	
+)			
+	
+
+POINT OF INTERESTS (Culture)
+
+WITH pois_query AS
+  (SELECT DISTINCT ON ("name") *
+   FROM planet_osm_point
+   WHERE "amenity" IN ('arts_centre',
+                       'art_school',
+                       'auditorium',
+                       'college',
+                       'contemporary_art_gallery',
+                       'library',
+                       'meditation_centre',
+                       'music_school',
+                       'language_school',
+                       'school',
+                       'theatre',
+                       'university')
+     OR "tourism" IN ('arts_centre',
+                      'artwork',
+                      'attraction',
+                      'gallery',
+                      'museum',
+                      'viewpoint',
+                      'zoo') )
+
+
+
+COMBINED 
+
+WITH pois_query AS
+  (SELECT DISTINCT ON ("name") *
+   FROM planet_osm_point
+   WHERE "amenity" IN ('arts_centre',
+                       'art_school',
+                       'auditorium',
+                       'college',
+                       'contemporary_art_gallery',
+                       'library',
+                       'meditation_centre',
+                       'music_school',
+                       'language_school',
+                       'school',
+                       'theatre',
+                       'university')
+     OR "tourism" IN ('arts_centre',
+                      'artwork',
+                      'attraction',
+                      'gallery',
+                      'museum',
+                      'viewpoint',
+                      'zoo')), polygons_query AS (
+SELECT *
+FROM public.planet_osm_polygon
+WHERE ("access" IN ('yes',
+                    'permissive',
+                    'permit',
+                    'destination',
+                    'designated')
+       OR "access" IS NULL)
+  AND ("foot" IN ('yes',
+                  'designated',
+                  'permissive')
+       OR "leisure"='park'
+       OR "landuse"='forest'
+       OR "natural"='water'
+       OR "highway" IN ('residential',
+                        'living_street',
+                        'pedestrian',
+                        'footway',
+                        'bridleway',
+                        'path',
+                        'sidewalk'))), roads_query AS (
+SELECT t.*
+FROM (SELECT *, row_number()
+                 OVER(
+                   ORDER BY osm_id ASC) AS row
+FROM   PUBLIC.planet_osm_line
+WHERE  ( "access" IN ( 'yes', 'designated' )
+          OR "access" IS NULL )
+       AND ( "highway" IN ( 'living_street', 'bridleway' ) )
+       AND St_length(St_transform(way, 3857)) > 100
+	  ) t
+UNION ALL
+SELECT t.*
+FROM   (SELECT *,
+               Row_number()
+                 OVER(
+                   ORDER BY osm_id ASC) AS row
+        FROM   PUBLIC.planet_osm_line
+        WHERE  ( "access" IN ( 'yes', 'designated' )
+                  OR "access" IS NULL )
+		AND St_length(St_transform(way, 3857)) > 250
+               AND ( "highway" = 'footway' )) 
+t WHERE  t.row % 2 = 0
+)
+
+SELECT "osm_id","access","amenity","area","barrier","bicycle","brand","bridge","boundary","building","culvert","embankment","foot","harbour","highway","landuse","leisure","lock","name","natural","place","surface","tourism", "tracktype","water","waterway","wetland","wood","tags","way"
+FROM polygons_query
+UNION ALL
+SELECT "osm_id","access","amenity","area","barrier","bicycle","brand","bridge","boundary","building","culvert","embankment","foot","harbour","highway","landuse","leisure","lock","name","natural","place","surface","tourism", "tracktype","water","waterway","wetland","wood","tags","way"
+FROM roads_query
+UNION ALL
+SELECT "osm_id","access","amenity","area","barrier","bicycle","brand","bridge","boundary","building","culvert","embankment","foot","harbour","highway","landuse","leisure","lock","name","natural","place","surface","tourism", NULL AS "tracktype","water","waterway","wetland","wood","tags","way"
+FROM pois_query
