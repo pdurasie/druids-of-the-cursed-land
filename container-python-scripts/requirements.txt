@@ -1,0 +1,10 @@
+autopep8==2.0.2
+docutils==0.19
+Geohash==1.0
+geohash2==1.1
+numpy==1.24.2
+protobuf==4.21.12
+psycopg2==2.9.5
+pycodestyle==2.10.0
+python-geohash==0.8.5
+shapely==2.0.1

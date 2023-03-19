@@ -1,6 +1,6 @@
 import psycopg2
-from database_scripts.wkt_geometry_util import get_intersecting_line, get_intersecting_polygon
-from geohashes.geohash import bbox
+from wkt_geometry_util import get_intersecting_line, get_intersecting_polygon
+from geohash import bbox
 from shapely.geometry import Polygon
 from shapely.geometry import LineString
 import csv

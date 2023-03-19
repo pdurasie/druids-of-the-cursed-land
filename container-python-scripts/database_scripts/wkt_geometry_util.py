@@ -1,4 +1,4 @@
-from geohashes.geohash import bbox
+from geohash import bbox
 from shapely.geometry import Polygon
 from shapely.geometry import LineString
 
