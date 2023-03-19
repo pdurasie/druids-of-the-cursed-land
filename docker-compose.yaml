@@ -70,5 +70,7 @@ services:
       - postgis_db
     ports:
       - "8081:3000"
+    networks:
+      - docker-network
 networks:
   docker-network:

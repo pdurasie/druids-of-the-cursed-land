@@ -7,7 +7,7 @@ import csv
 import shapely.wkt as wkt
 
 
-def get_SQL_command(xmin: float, ymin: float, xmax: float, ymax: float, srd: int) -> str:
+def get_SQL_command(xmin: float, ymin: float, xmax: float, ymax: float) -> str:
     return """WITH pois_query AS
   (SELECT DISTINCT ON (\"name\") *
    FROM planet_osm_point
@@ -25,7 +25,7 @@ def get_SQL_command(xmin: float, ymin: float, xmax: float, ymax: float, srd: int
                        'university')
      OR \"tourism\" IN ('arts_centre',
                       'artwork',
-                      'attraction',
+                      'attraction',d
                       'gallery',
                       'museum',
                       'viewpoint',
@@ -110,7 +110,8 @@ for geohash in geo_hashes:
     # Retrieve the polygons from the database that fit the given geohash
     # also save some logs when there is a geohash that has no region in it
     xmin, ymin, xmax, ymax = bbox(geohash)
-    cur.execute(get_SQL_command(xmin, ymin, xmax, ymax))
+    # cur.execute(get_SQL_command(xmin, ymin, xmax, ymax))
+    cur.execute("SELECT \"osm_id\",\"access\",\"amenity\",\"area\",\"barrier\",\"bicycle\",\"brand\",\"bridge\",\"boundary\",\"building\",\"culvert\",\"embankment\",\"foot\",\"harbour\",\"highway\",\"landuse\",\"leisure\",\"lock\",\"name\",\"natural\",\"place\",\"surface\",\"tourism\", \"tracktype\",\"water\",\"waterway\",\"wetland\",\"wood\",\"tags\", ST_AsText(\"way\") AS \"way\" FROM public.planet_osm_polygon LIMIT 10")
     rows = cur.fetchall()
 
     # Process the polygons
@@ -145,13 +146,13 @@ for geohash in geo_hashes:
         # wetland = row[26]
         # wood = row[27]
         # tags = row[28]
-        # geometry = wkt.loads(row[29])
+        geometry = wkt.loads(row[29])
 
         intersecting_geometry = geometry
         # separate the part that intersects with the geohash box from the entire geometry
-        if (isinstance(intersecting_geometry, LineString)):
+        if isinstance(intersecting_geometry, LineString):
             intersecting_geometry = get_intersecting_line(geohash, geometry)
-        elif (isinstance(intersecting_geometry, Polygon)):
+        elif isinstance(intersecting_geometry, Polygon):
             intersecting_geometry = get_intersecting_polygon(geohash, geometry)
 
         # # Insert the sub polygons into the new table
