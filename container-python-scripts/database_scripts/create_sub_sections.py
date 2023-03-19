@@ -93,8 +93,8 @@ WHERE ST_Contains(ST_MakeEnvelope({min_lon}, {min_lat}, {max_lon}, {max_lat}, 43
 
 
 # Connect to the database
-conn = psycopg2.connect(database="postgres", user="postgis",
-                        password="123456", host="postgis", port="5432")
+conn = psycopg2.connect(database="docker", user="docker",
+                        password="docker", host="postgis_db", port="5432")
 cur = conn.cursor()
 
 geo_hashes = ["u33677", "u33dh4", "u33e5h"]
