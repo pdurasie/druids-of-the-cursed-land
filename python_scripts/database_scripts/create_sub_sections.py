@@ -1,4 +1,4 @@
-from python_scripts.database_scripts.sql_commands import (
+from sql_commands import (
     get_insert_command,
     get_sql_query,
     get_table_creation_query,
@@ -7,7 +7,7 @@ import psycopg2
 import csv
 from shapely.geometry import Polygon, LineString
 from shapely.wkt import loads as wkt_loads
-from geohash_tools import (
+from wkt_geometry_util import (
     get_intersecting_polygon,
     get_intersecting_line,
     get_polygon_from_geohash,
@@ -51,7 +51,7 @@ def process_osm_data(source_table_name, target_table_name, geohashes):
 
 
 def _create_new_row(row, geohash, table_name):
-    if table_name.contains("point"):
+    if "point" in table_name:
         return _create_new_point_row(row, geohash)
     else:
         return _create_new_line_or_polygon_row(row, geohash, table_name)
@@ -89,7 +89,7 @@ def _create_new_line_or_polygon_row(row, geohash, geometry_type):
     tags = row[28]
     geometry = wkt_loads(row[29])
 
-    if geometry_type == "berlin_lines":
+    if "line" in geometry_type:
         intersecting_geometry = get_intersecting_line(geohash, geometry)
     else:  # geometry_type == 'polygon'
         intersecting_geometry = get_intersecting_polygon(geohash, geometry)
@@ -98,48 +98,58 @@ def _create_new_line_or_polygon_row(row, geohash, geometry_type):
         intersecting_geometry if intersecting_geometry is not None else geometry
     )
 
-    # Get the fraction of the area of the intersecting geometry to the area of the geohash bounding box
-    geohash_poly = get_polygon_from_geohash(geohash)
-    area_fraction = to_be_inserted_geometry.area / geohash_poly.area
+    len_or_area_fraction = None
+    if "polygon" in geometry_type:
+        # Get the fraction of the area of the intersecting geometry to the area of the geohash bounding box
+        geohash_poly = get_polygon_from_geohash(geohash)
+        area_fraction = to_be_inserted_geometry.area / geohash_poly.area
 
-    # Only insert the row if the area fraction is greater than 0.005 (for polygons)
-    if area_fraction is not None and area_fraction < 0.005:
-        return
-    else:
-        return (
-            osm_id,
-            geohash,
-            access,
-            amenity,
-            area,
-            barrier,
-            bicycle,
-            brand,
-            bridge,
-            boundary,
-            buildings,
-            culvert,
-            embankment,
-            foot,
-            harbour,
-            highway,
-            landuse,
-            leisure,
-            lock,
-            name,
-            natural,
-            place,
-            surface,
-            tourism,
-            tracktype,
-            watermark,
-            waterway,
-            wetland,
-            wood,
-            tags,
-            area_fraction,
-            to_be_inserted_geometry.wkt,
-        )
+        # Only insert the row if the area fraction is greater than 0.005 (for polygons)
+        if area_fraction is not None and area_fraction < 0.005:
+            return
+        else:
+            len_or_area_fraction = area_fraction
+    elif "line" in geometry_type:
+        # Only insert the row if the length of the intersecting geometry is greater than 0.0015 (for lines)
+        if to_be_inserted_geometry.length < 0.0015:
+            return
+        else:
+            len_or_area_fraction = to_be_inserted_geometry.length
+
+    return (
+        osm_id,
+        geohash,
+        access,
+        amenity,
+        area,
+        barrier,
+        bicycle,
+        brand,
+        bridge,
+        boundary,
+        buildings,
+        culvert,
+        embankment,
+        foot,
+        harbour,
+        highway,
+        landuse,
+        leisure,
+        lock,
+        name,
+        natural,
+        place,
+        surface,
+        tourism,
+        tracktype,
+        watermark,
+        waterway,
+        wetland,
+        wood,
+        tags,
+        len_or_area_fraction,
+        to_be_inserted_geometry.wkt,
+    )
 
 
 def _create_new_point_row(row, geohash):
@@ -209,9 +219,9 @@ def _create_new_point_row(row, geohash):
 
 # Create dictionaries of source table name + target table name
 tables = [
-    ["planet_osm_line", "berlin_lines"],
     ["planet_osm_polygon", "berlin_polygons"],
     ["planet_osm_point", "berlin_points"],
+    ["planet_osm_line", "berlin_lines"],
 ]
 geo_hashes = []
 

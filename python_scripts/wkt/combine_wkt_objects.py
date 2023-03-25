@@ -6,10 +6,10 @@ from shapely.geometry import MultiPoint, MultiLineString, MultiPolygon
 
 # load geometries from csv
 wkt_list = []
-with open('./berlin_data/combined_berlin.csv', newline='') as csvfile:
-    objects = csv.reader(csvfile, delimiter=',')
+with open("../berlin_data/combined_berlin.csv", newline="") as csvfile:
+    objects = csv.reader(csvfile, delimiter=",")
     for object in objects:
-        cleaned_object = object[0].replace('"', '')
+        cleaned_object = object[0].replace('"', "")
         wkt_list.append(cleaned_object)
 
 geoms = []
@@ -17,12 +17,9 @@ geoms = []
 for geometry_object in wkt_list:
     geoms.append(wkt.loads(geometry_object))
 
-points = [geom for geom in geoms if isinstance(
-    geom, geometry.Point)]
-lines = [geom for geom in geoms if isinstance(
-    geom, geometry.LineString)]
-polygons = [geom for geom in geoms if isinstance(
-    geom, geometry.Polygon)]
+points = [geom for geom in geoms if isinstance(geom, geometry.Point)]
+lines = [geom for geom in geoms if isinstance(geom, geometry.LineString)]
+polygons = [geom for geom in geoms if isinstance(geom, geometry.Polygon)]
 
 # merge points into a single MultiPoint object
 merged_points = MultiPoint(points)
@@ -34,20 +31,16 @@ merged_lines = MultiLineString(lines)
 merged_polygons = MultiPolygon(polygons)
 
 # convert the merged geometries to WKT or GeoJSON
-merged_wkt = merged_points.wkt + "\n" + \
-    merged_lines.wkt + "\n" + merged_polygons.wkt
+merged_wkt = merged_points.wkt + "\n" + merged_lines.wkt + "\n" + merged_polygons.wkt
 
 
 merged_geojson = {
     "type": "FeatureCollection",
     "features": [
-        {
-            "type": "Feature",
-            "geometry": geom.__geo_interface__,
-            "properties": {}
-        } for geom in [merged_points, merged_lines, merged_polygons]
-    ]
+        {"type": "Feature", "geometry": geom.__geo_interface__, "properties": {}}
+        for geom in [merged_points, merged_lines, merged_polygons]
+    ],
 }
 
-with open('./berlin_data/combined_berlin.txt', "w") as txt:
+with open("../berlin_data/combined_berlin.txt", "w") as txt:
     txt.write(json.dumps(merged_geojson))

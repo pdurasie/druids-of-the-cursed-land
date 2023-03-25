@@ -19,15 +19,15 @@ def get_sql_query(source_table_name, geohash):
 
 
 def get_insert_command(target_table_name):
-    if target_table_name.contains("point"):
-        insert_command = _get_points_insert_command()
+    if "point" in target_table_name:
+        insert_command = _get_points_insert_command(target_table_name)
     else:
-        insert_command = _get_lines_or_polygons_insert_command()
+        insert_command = _get_lines_or_polygons_insert_command(target_table_name)
     return insert_command
 
 
 def _get_points_insert_command(table_name):
-    f"""
+    return f"""
     INSERT INTO {table_name} (
         osm_id, geohash, access, amenity, area, barrier, bicycle, brand, bridge, boundary,
         building, culvert, embankment, foot, harbour, highway, landuse, leisure, lock,
@@ -38,12 +38,17 @@ def _get_points_insert_command(table_name):
 
 
 def _get_lines_or_polygons_insert_command(table_name):
-    f"""
+    if "line" in table_name:
+        column_name = "length"
+    else:
+        column_name = "area_fraction"
+
+    return f"""
     INSERT INTO {table_name} (
         osm_id, geohash, access, amenity, area, barrier, bicycle, brand, bridge, boundary,
         building, culvert, embankment, foot, harbour, highway, landuse, leisure, lock,
         name, "natural", place, surface, tourism, tracktype, water, waterway, wetland,
-        wood, tags, area_fraction, way
+        wood, tags, {column_name}, way
     ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, ST_SetSRID(ST_GeomFromText(%s), 4326));
     """
 
@@ -93,6 +98,7 @@ def _get_lines_creation_command():
             osm_id bigint,
             geohash text,
             access text,
+            amenity text,
             area text,
             barrier text,
             bicycle text,
@@ -119,6 +125,7 @@ def _get_lines_creation_command():
             wetland text,
             wood text,
             tags text,
+            length float,
             way geometry
         )
         """
@@ -131,6 +138,7 @@ def _get_polygons_creation_command():
             osm_id bigint,
             geohash text,
             access text,
+            amenity text,
             area text,
             barrier text,
             bicycle text,
@@ -151,11 +159,13 @@ def _get_polygons_creation_command():
             place text,
             surface text,
             tourism text,
+            tracktype text,
             water text,
             waterway text,
             wetland text,
             wood text,
             tags text,
+            area_fraction float,
             way geometry
         )
         """
@@ -167,7 +177,7 @@ def _get_points_sql_query(geohash):
   (SELECT ST_Transform(ST_SetSRID(ST_GeomFromGeoHash('{geohash}'), 4326), 3857) AS geom)
 SELECT DISTINCT ON (\"name\") 
         osm_id,
-       "ACCESS",
+       "access",
        amenity,
        area,
        barrier,
@@ -183,9 +193,9 @@ SELECT DISTINCT ON (\"name\")
        highway,
        landuse,
        leisure,
-       "LOCK",
+       "lock",
        name,
-       "NATURAL",
+       "natural",
        place,
        surface,
        tourism,
@@ -195,8 +205,8 @@ SELECT DISTINCT ON (\"name\")
        wood,
        tags,
        ST_AsText(ST_Transform(way, 4326)) AS "way"
-   FROM planet_osm_point
-   WHERE ST_Intersects(way, geohash_bbox.geom) AND \"amenity\" IN ('arts_centre',
+   FROM planet_osm_point, geohash_bbox
+   WHERE ST_Intersects(way, geohash_bbox.geom) AND (\"amenity\" IN ('arts_centre',
                        'art_school',
                        'auditorium',
                        'college',
@@ -211,93 +221,95 @@ SELECT DISTINCT ON (\"name\")
      OR \"tourism\" IN ('arts_centre',
                         'artwork',
                         'attraction',
-                        d 'gallery',
-                          'museum',
-                          'viewpoint',
-                          'zoo'))
+                        'gallery',
+                        'museum',
+                        'viewpoint',
+                        'zoo'))
     """
 
 
 def _get_lines_sql_query(geohash):
-    """
-    WITH geohash_bbox AS
-      (SELECT ST_Transform(ST_SetSRID(ST_GeomFromGeoHash('{geohash}'), 4326), 3857) AS geom)
-    SELECT osm_id,
-           "access",
-           amenity,
-           area,
-           barrier,
-           bicycle,
-           brand,
-           bridge,
-           boundary,
-           building,
-           culvert,
-           embankment,
-           foot,
-           harbour,
-           highway,
-           landuse,
-           leisure,
-           "lock",
-           name,
-           "natural",
-           place,
-           surface,
-           tourism,
-           tracktype,
-           water,
-           waterway,
-           wetland,
-           wood,
-           tags,
-           ST_AsText(ST_Transform(way, 4326)) AS "way"
-    FROM PUBLIC.planet_osm_line,
-         geohash_bbox
-    WHERE ST_Intersects(way, geohash_bbox.geom)
-      AND (\"access\" IN ( 'yes', 'designated' )
-              OR \"access\" IS NULL )
-           AND ( \"highway\" IN ( 'living_street', 'bridleway' ) )
-           AND St_length(St_transform(way, 3857)) > 100
-              )
-    UNION ALL
-    WITH geohash_bbox AS
-      (SELECT ST_Transform(ST_SetSRID(ST_GeomFromGeoHash('{geohash}'), 4326), 3857) AS geom)
-    SELECT osm_id,
-           ACCESS,
-           amenity,
-           area,
-           barrier,
-           bicycle,
-           brand,
-           bridge,
-           boundary,
-           building,
-           culvert,
-           embankment,
-           foot,
-           harbour,
-           highway,
-           landuse,
-           leisure,
-           "lock",
-           name,
-           "natural",
-           place,
-           surface,
-           tourism,
-           tracktype,
-           water,
-           waterway,
-           wetland,
-           wood,
-           tags,
-           ST_AsText(ST_Transform(way, 4326)) AS "way"
-            FROM   PUBLIC.planet_osm_line
-            WHERE  ST_Intersects(way, geohash_bbox.geom) AND ( \"access\" IN ( 'yes', 'designated' )
-                      OR \"access\" IS NULL )
-                    AND St_length(St_transform(way, 3857)) > 250
-                   AND ( \"highway\" = 'footway')
+    return f"""
+WITH geohash_bbox AS
+  (SELECT ST_Transform(ST_SetSRID(ST_GeomFromGeoHash('{geohash}'), 4326), 3857) AS geom)
+SELECT osm_id,
+       "access",
+       amenity,
+       area,
+       barrier,
+       bicycle,
+       brand,
+       bridge,
+       boundary,
+       building,
+       culvert,
+       embankment,
+       foot,
+       harbour,
+       highway,
+       landuse,
+       leisure,
+       "lock",
+       name,
+       "natural",
+       place,
+       surface,
+       tourism,
+       tracktype,
+       water,
+       waterway,
+       wetland,
+       wood,
+       tags,
+       ST_AsText(ST_Transform(way, 4326)) AS "way"
+FROM PUBLIC.planet_osm_line,
+     geohash_bbox
+WHERE ST_Intersects(way, geohash_bbox.geom)
+  AND ("access" IN ('yes',
+                    'designated')
+       OR "access" IS NULL)
+  AND ("highway" IN ('living_street',
+                     'bridleway'))
+  AND St_length(St_transform(way, 3857)) > 100
+UNION ALL
+SELECT osm_id,
+       ACCESS,
+       amenity,
+       area,
+       barrier,
+       bicycle,
+       brand,
+       bridge,
+       boundary,
+       building,
+       culvert,
+       embankment,
+       foot,
+       harbour,
+       highway,
+       landuse,
+       leisure,
+       "lock",
+       name,
+       "natural",
+       place,
+       surface,
+       tourism,
+       tracktype,
+       water,
+       waterway,
+       wetland,
+       wood,
+       tags,
+       ST_AsText(ST_Transform(way, 4326)) AS "way"
+FROM PUBLIC.planet_osm_line,
+     geohash_bbox
+WHERE ST_Intersects(way, geohash_bbox.geom)
+  AND ("access" IN ('yes',
+                    'designated')
+       OR "access" IS NULL)
+  AND St_length(St_transform(way, 3857)) > 250
+  AND ("highway" = 'footway')
     """
 
 

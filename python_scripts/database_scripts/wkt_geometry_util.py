@@ -2,6 +2,7 @@ from geohash import bbox
 from shapely.geometry import Polygon
 from shapely.geometry import MultiPolygon
 from shapely.geometry import LineString
+from shapely.ops import unary_union
 import shapely.wkt as wkt
 
 
@@ -31,21 +32,19 @@ def get_intersecting_polygon(
 
 def get_intersecting_line(geohash: str, line: LineString) -> LineString | None:
     # Convert geohash to bounding box polygon
-    min_lat, min_lon, max_lat, max_lon = bbox(geohash)
-    bbox_polygon = Polygon(
-        [(min_lon, min_lat), (max_lon, min_lat), (max_lon, max_lat), (min_lon, max_lat)]
-    )
-
+    bbox_polygon = get_polygon_from_geohash(geohash)
     # Get intersection between the line and the bounding box polygon
     intersection = line.intersection(bbox_polygon)
-    if intersection.is_empty:
+
+    if intersection.equals_exact(line, 0):
         return None
-    elif intersection.geom_type == "LineString":
+
+    if intersection.geom_type == "LineString":
         return intersection
     else:
         # If the intersection is a MultiLineString, convert it to a LineString by merging all lines together
         return (
-            intersection[0].merged
+            unary_union(intersection)
             if intersection.geom_type == "MultiLineString"
             else intersection
         )
