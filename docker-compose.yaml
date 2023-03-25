@@ -52,6 +52,8 @@ services:
       PG_PORT: 5432
     networks:
       - docker-network
+    volumes:
+        - postgis_data:/var/lib/postgresql/data
   dashboard:
     image: dpage/pgadmin4:latest
     container_name: pgadmin4
@@ -74,3 +76,5 @@ services:
       - docker-network
 networks:
   docker-network:
+volumes:
+  postgis_data:
