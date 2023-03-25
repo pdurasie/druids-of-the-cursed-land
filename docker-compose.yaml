@@ -2,7 +2,7 @@ services:
   osm2pgsql:
     build:
       context: osm2pgsql/
-    command: bash -c "sleep 5; /usr/local/bin/osm-importer.sh"
+    command: bash -c "sleep 10; /usr/local/bin/osm-importer.sh"
     environment:
       PGPASSWORD: docker
       PG_PORT_5432_TCP_ADDR: postgis_db

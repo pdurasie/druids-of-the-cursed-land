@@ -29,3 +29,4 @@ WORKDIR /app
 ADD database_scripts database_scripts
 ADD geohashes geohashes
 ADD wkt wkt
+ADD berlin_data berlin_data
