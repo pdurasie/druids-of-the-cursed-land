@@ -30,11 +30,9 @@ def process_osm_data(source_table_name, target_table_name, geohashes):
     cur.execute(get_table_creation_query(source_table_name))
 
     for index, geohash in enumerate(geohashes):
-        # Print progress every 500 geohashes
-        if index % 500 == 0:
-            print(
-                f"Processed {index} geohashes out of {len(geohashes)} - {index/len(geohashes)*100:.2f}%"
-            )
+        # Print progress every 1000 geohashes
+        if index % 1000 == 0:
+            print(f"Processing {source_table_name}...({index/len(geohashes)*100:.2f}%)")
 
         # Fetch the data
         cur.execute(get_sql_query(source_table_name, geohash))
@@ -46,6 +44,7 @@ def process_osm_data(source_table_name, target_table_name, geohashes):
             if new_row is not None:
                 cur.execute(get_insert_command(target_table_name), new_row)
 
+    print("\nDone processing " + source_table_name + ".\n")
     # Commit the changes and close the connection
     conn.commit()
     conn.close()
