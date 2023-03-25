@@ -5,9 +5,8 @@ from shapely.geometry import LineString
 import shapely.wkt as wkt
 
 
-def get_intersecting_polygon(
-    geohash: str, polygon: Polygon
-) -> Polygon | MultiPolygon | None:
+# Create a function to get a polygon from a geohash
+def get_polygon_from_geohash(geohash: str) -> Polygon:
     # Convert geohash to bounding box polygon
     # Example value of bbox(geohash): {'s': 52.4432373046875, 'w': 13.150634765625, 'n': 52.44873046875, 'e': 13.16162109375}
     # This means that the southern boundary of the bounding box is at latitude 52.4432373046875, the western boundary is at longitude 13.150634765625, the northern boundary is at latitude 52.44873046875, and the eastern boundary is at longitude 13.16162109375.
@@ -16,8 +15,14 @@ def get_intersecting_polygon(
     bbox_polygon = Polygon(
         [(min_lon, min_lat), (max_lon, min_lat), (max_lon, max_lat), (min_lon, max_lat)]
     )
+    return bbox_polygon
 
+
+def get_intersecting_polygon(
+    geohash: str, polygon: Polygon
+) -> Polygon | MultiPolygon | None:
     # Check for intersection and get intersecting part as a new polygon
+    bbox_polygon = get_polygon_from_geohash(geohash)
     if polygon.intersects(bbox_polygon):
         intersection = polygon.intersection(bbox_polygon)
         if not (intersection.equals_exact(polygon, 0)):

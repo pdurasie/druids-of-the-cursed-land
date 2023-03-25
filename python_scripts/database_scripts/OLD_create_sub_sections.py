@@ -1,5 +1,9 @@
 import psycopg2
-from wkt_geometry_util import get_intersecting_line, get_intersecting_polygon
+from wkt_geometry_util import (
+    get_intersecting_line,
+    get_intersecting_polygon,
+    get_polygon_from_geohash,
+)
 from geohash import bbox
 from shapely.geometry import Polygon
 from shapely.geometry import LineString
@@ -101,17 +105,18 @@ cur = conn.cursor()
 
 geo_hashes = []
 
-with open("../berlin_data/geohashes_berlin_7.csv", newline="") as csvfile:
+with open("berlin_data/geohashes_berlin_7.csv", newline="") as csvfile:
     objects = csv.reader(csvfile, delimiter=",")
     for object in objects:
-        geo_hashes.append(object)
+        for geohash in object:
+            geo_hashes.append(geohash)
 
 # If berlin_regions table does not exist, create it
 # If it exists, drop it and create it again
-cur.execute("DROP TABLE IF EXISTS berlin_regions")
+cur.execute("DROP TABLE IF EXISTS berlin_polygons")
 cur.execute(
     """
-CREATE TABLE berlin_regions(
+CREATE TABLE berlin_polygons(
     id SERIAL PRIMARY KEY,
     osm_id bigint,
     geohash text,
@@ -150,11 +155,13 @@ CREATE TABLE berlin_regions(
 )
 
 
-for geohash in geo_hashes:
-    # Retrieve the polygons from the database that fit the given geohash
-    # also save some logs when there is a geohash that has no region in it
-    xmin, ymin, xmax, ymax = bbox(geohash)
-    # cur.execute(get_SQL_command(xmin, ymin, xmax, ymax))
+for index, geohash in enumerate(geo_hashes):
+    # Print progress every 10 geohashes
+    if index % 500 == 0:
+        print(
+            f"Processed {index} geohashes out of {len(geo_hashes)} - {index/len(geo_hashes)*100:.2f}%"
+        )
+
     cur.execute(
         f"""
     WITH geohash_bbox AS (
@@ -166,7 +173,25 @@ FROM
   planet_osm_polygon,
   geohash_bbox
 WHERE
-  ST_Intersects(planet_osm_polygon.way, geohash_bbox.geom);
+  ST_Intersects(planet_osm_polygon.way, geohash_bbox.geom) AND (\"access\" IN ('yes',
+                    'permissive',
+                    'permit',
+                    'destination',
+                    'designated')
+       OR \"access\" IS NULL)
+  AND (\"foot\" IN ('yes',
+                  'designated',
+                  'permissive')
+       OR \"leisure\"='park'
+       OR \"landuse\"='forest'
+       OR \"natural\"='water'
+       OR \"highway\" IN ('residential',
+                        'living_street',
+                        'pedestrian',
+                        'footway',
+                        'bridleway',
+                        'path',
+                        'sidewalk'));
 
     """
     )
@@ -212,10 +237,17 @@ WHERE
         elif isinstance(intersecting_geometry, Polygon):
             intersecting_geometry = get_intersecting_polygon(geohash, geometry)
 
-        # Create a new row which holds all the information of the original row, only replacing the geometry with the intersecting geometry if that is non null, otherwise the original geometry. Also add the geohash to the row and the fraction of the area the geometry covers of the geohash.
+        # Create a new row which holds all the information of the original row, only replacing the geometry with the intersecting geometry if that is non-null, otherwise the original geometry. Also add the geohash to the row and the fraction of the area the geometry covers of the geohash.
         to_be_inserted_geometry = (
             intersecting_geometry if intersecting_geometry is not None else geometry
         )
+
+        # get the fraction of the area of the intersecting geometry to the area of the the geohash bounding box
+        geohash_poly = get_polygon_from_geohash(geohash)
+        area_fraction = to_be_inserted_geometry.area / geohash_poly.area
+        # only insert the row if the area fraction is greater than 0.005
+        if area_fraction < 0.005:
+            continue
 
         new_row = (
             osm_id,
@@ -248,30 +280,24 @@ WHERE
             wetland,
             wood,
             tags,
-            to_be_inserted_geometry.area / geometry.area,
+            area_fraction,
             to_be_inserted_geometry.wkt,
         )
 
         # Insert the new row into the database
         cur.execute(
             """
-            INSERT INTO berlin_regions (
+            INSERT INTO berlin_polygons (
                 osm_id, geohash, access, amenity, area, barrier, bicycle, brand, bridge, boundary,
                 building, culvert, embankment, foot, harbour, highway, landuse, leisure, lock,
                 name, "natural", place, surface, tourism, tracktype, water, waterway, wetland,
                 wood, tags, area_fraction, way
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, ST_SetSRID(ST_GeomFromText(%s), 4326));
             """,
             new_row,
         )
-
-    # Print out the number of rows that were inserted and the original number of rows
-    cur.execute("SELECT COUNT(*) FROM berlin_regions")
-    print("Number of rows in berlin_regions: ", cur.fetchone()[0])
-    print("\n")
-    print("Number of rows in original table: ", len(rows))
-    # cur.execute(
-    # "INSERT INTO berlin_regions (\"osm_id\",\"access\",\"amenity\",\"area\",\"barrier\",\"bicycle\",\"brand\",\"bridge\",\"boundary\",\"building\",\"culvert\",\"embankment\",\"foot\",\"harbour\",\"highway\",\"landuse\",\"leisure\",\"lock\",\"name\",\"natural\",\"place\",\"surface\",\"tourism\", NULL AS \"tracktype\",\"water\",\"waterway\",\"wetland\",\"wood\",\"tags\",\"way\") VALUES (%s, ST_GeomFromText(%s));", (parent_id, geometry_wkt))
+# cur.execute(
+# "INSERT INTO berlin_regions (\"osm_id\",\"access\",\"amenity\",\"area\",\"barrier\",\"bicycle\",\"brand\",\"bridge\",\"boundary\",\"building\",\"culvert\",\"embankment\",\"foot\",\"harbour\",\"highway\",\"landuse\",\"leisure\",\"lock\",\"name\",\"natural\",\"place\",\"surface\",\"tourism\", NULL AS \"tracktype\",\"water\",\"waterway\",\"wetland\",\"wood\",\"tags\",\"way\") VALUES (%s, ST_GeomFromText(%s));", (parent_id, geometry_wkt))
 
 # Commit the changes and close the connection
 conn.commit()
