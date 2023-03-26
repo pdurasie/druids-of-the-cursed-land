@@ -31,31 +31,24 @@ def get_all_geohashes_in_bbox(bbox):
     )
 
 
-# This method returns an array containing arrays of geohashes that are neighbors pairs.
-def get_neighbor_pairs(geohash, orientation="horizontal"):
-    if orientation not in ("horizontal", "vertical"):
-        raise ValueError("Orientation must be either 'horizontal' or 'vertical'.")
+def get_geohash_quadrants(geohash):
+    subdivision = [
+        ["b", "c", "f", "g", "u", "v", "y", "z"],
+        ["8", "9", "d", "e", "s", "t", "w", "x"],
+        ["2", "3", "6", "7", "k", "m", "q", "r"],
+        ["0", "1", "4", "5", "h", "j", "n", "p"],
+    ]
 
-    subdivision = {
-        "horizontal": [
-            ["b", "c", "f", "g", "u", "v", "y", "z"],
-            ["8", "9", "d", "e", "s", "t", "w", "x"],
-            ["2", "3", "6", "7", "k", "m", "q", "r"],
-            ["0", "1", "4", "5", "h", "j", "n", "p"],
-        ],
-        "vertical": [
-            ["p", "r", "x", "z", "n", "q", "w", "y"],
-            ["j", "m", "t", "v", "h", "k", "s", "u"],
-            ["5", "7", "e", "g", "4", "6", "d", "f"],
-            ["1", "3", "9", "c", "0", "2", "8", "b"],
-        ],
-    }
+    quadrants = []
 
-    pattern = subdivision[orientation]
-    pairs = []
+    for row in range(0, len(subdivision), 2):
+        for col in range(0, len(subdivision[row]), 2):
+            quadrant = [
+                geohash + subdivision[row][col],
+                geohash + subdivision[row][col + 1],
+                geohash + subdivision[row + 1][col],
+                geohash + subdivision[row + 1][col + 1],
+            ]
+            quadrants.append(quadrant)
 
-    for row in range(len(pattern)):
-        for col in range(0, len(pattern[row]), 2):
-            pairs.append([geohash + pattern[row][col], geohash + pattern[row][col + 1]])
-
-    return pairs
+    return quadrants

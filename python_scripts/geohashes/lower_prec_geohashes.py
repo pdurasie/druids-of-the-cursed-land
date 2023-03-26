@@ -1,9 +1,10 @@
 import csv
 
 
-def get_geohashes_of_higher_precision(geohash: str, precision: int) -> list[str]:
+def get_geohashes_of_higher_precision(geohash: str) -> list[str]:
     # Define the base32 character set used by geohash
     BASE32 = "0123456789bcdefghjkmnpqrstuvwxyz"
+    precision = len(geohash)
 
     # Check if the input geohash and precision are valid
     if not isinstance(geohash, str) or not all(c in BASE32 for c in geohash):
@@ -50,20 +51,20 @@ def get_geohashes_of_higher_precision(geohash: str, precision: int) -> list[str]
     return geohashes
 
 
-# Define Berlin polygon coordinates
-with open('geohashes_berlin.txt') as f:
-    data = f.read()
-    berlin_geohashes = data.split('\n')
+# # Define Berlin polygon coordinates
+# with open('geohashes_berlin.txt') as f:
+#     data = f.read()
+#     berlin_geohashes = data.split('\n')
 
-geohashes_7 = []
+# geohashes_7 = []
 
-for geohash in berlin_geohashes:
-    cleaned_hash = geohash.strip()
-    geohashes_7.extend(get_geohashes_of_higher_precision(
-        cleaned_hash, len(cleaned_hash)))
+# for geohash in berlin_geohashes:
+#     cleaned_hash = geohash.strip()
+#     geohashes_7.extend(get_geohashes_of_higher_precision(
+#         cleaned_hash, len(cleaned_hash)))
 
 
-with open('./cleaned_geohashes_berlin.csv', "w") as myFile:
-    writer = csv.writer(myFile)
-    for geohash in geohashes_7:
-        writer.writerow([geohash])
+# with open('./cleaned_geohashes_berlin.csv', "w") as myFile:
+#     writer = csv.writer(myFile)
+#     for geohash in geohashes_7:
+#         writer.writerow([geohash])
