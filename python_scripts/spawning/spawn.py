@@ -1,3 +1,4 @@
+import time
 import psycopg2
 
 from geohashes.lower_prec_geohashes import get_geohashes_of_higher_precision
@@ -6,6 +7,8 @@ from .spawn_herbs import spawn_herbs_in_geohash
 
 
 def main():
+    # Start a timer
+    start_time = time.time()
     # Connect to the database
     conn = psycopg2.connect(
         database="docker",
@@ -24,6 +27,11 @@ def main():
     # Commit the changes and close the connection
     conn.commit()
     conn.close()
+
+    # Print the time it took to spawn the herbs
+    print(
+        f"Spawned herbs in {len(geohashes)} geohashes in {time.time() - start_time:.2f} seconds."
+    )
 
 
 if __name__ == "__main__":

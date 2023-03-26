@@ -1,4 +1,3 @@
-import math
 import psycopg2
 import random
 from shapely import wkt
@@ -107,20 +106,33 @@ def spawn_herbs_in_geohash(geohash: str, cursor: psycopg2.extensions.cursor):
 
         other_regions = [region for region in data if region not in park_forest_regions]
 
-        # Spawn 2 herbs in the quadrant
-        for _ in range(2):
-            if park_forest_regions and other_regions:
-                # Give a 50% higher chance for park and forest regions
-                random_region_data = random.choices(
-                    park_forest_regions + other_regions,
-                    weights=[1.5] * len(park_forest_regions) + [1] * len(other_regions),
-                    k=1,
-                )[0]
-            elif park_forest_regions:
-                random_region_data = random.choice(park_forest_regions)
-            else:
-                random_region_data = random.choice(other_regions)
+        num_herbs_to_spawn = 1 if not park_forest_regions else 2
 
+        # Spawn the first herb in the quadrant
+        if park_forest_regions and other_regions:
+            # Give a 70% higher chance for park and forest regions
+            park_forest_weight = 1.7 * len(other_regions) / len(park_forest_regions)
+            random_region_data = random.choices(
+                park_forest_regions + other_regions,
+                weights=[park_forest_weight] * len(park_forest_regions)
+                + [1] * len(other_regions),
+                k=1,
+            )[0]
+        elif park_forest_regions:
+            random_region_data = random.choice(park_forest_regions)
+        else:
+            random_region_data = random.choice(other_regions)
+
+        random_geometry = random_region_data["geometry"]
+        random_point = generate_random_point_in_geometry(random_geometry)
+
+        lat, lon = random_point.y, random_point.x
+
+        insert_herb_into_database(lat, lon, cursor)
+
+        # Spawn the second herb in a park or forest if available
+        if num_herbs_to_spawn == 2:
+            random_region_data = random.choice(park_forest_regions)
             random_geometry = random_region_data["geometry"]
             random_point = generate_random_point_in_geometry(random_geometry)
 

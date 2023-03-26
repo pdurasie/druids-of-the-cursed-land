@@ -231,7 +231,8 @@ SELECT DISTINCT ON (\"name\")
 def _get_lines_sql_query(geohash):
     return f"""
 WITH geohash_bbox AS
-  (SELECT ST_Transform(ST_SetSRID(ST_GeomFromGeoHash('{geohash}'), 4326), 3857) AS geom)
+  (SELECT ST_Transform(ST_SetSRID(ST_GeomFromGeoHash('{geohash}'), 4326), 3857) AS geom),
+temp_query AS (
 SELECT osm_id,
        "access",
        amenity,
@@ -261,7 +262,8 @@ SELECT osm_id,
        wetland,
        wood,
        tags,
-       ST_AsText(ST_Transform(way, 4326)) AS "way"
+       ST_AsText(ST_Transform(way, 4326)) AS "way",
+       ROW_NUMBER() OVER () AS row_number
 FROM PUBLIC.planet_osm_line,
      geohash_bbox
 WHERE ST_Intersects(way, geohash_bbox.geom)
@@ -269,47 +271,10 @@ WHERE ST_Intersects(way, geohash_bbox.geom)
                     'designated')
        OR "access" IS NULL)
   AND ("highway" IN ('living_street',
-                     'bridleway'))
-  AND St_length(St_transform(way, 3857)) > 100
-UNION ALL
-SELECT osm_id,
-       ACCESS,
-       amenity,
-       area,
-       barrier,
-       bicycle,
-       brand,
-       bridge,
-       boundary,
-       building,
-       culvert,
-       embankment,
-       foot,
-       harbour,
-       highway,
-       landuse,
-       leisure,
-       "lock",
-       name,
-       "natural",
-       place,
-       surface,
-       tourism,
-       tracktype,
-       water,
-       waterway,
-       wetland,
-       wood,
-       tags,
-       ST_AsText(ST_Transform(way, 4326)) AS "way"
-FROM PUBLIC.planet_osm_line,
-     geohash_bbox
-WHERE ST_Intersects(way, geohash_bbox.geom)
-  AND ("access" IN ('yes',
-                    'designated')
-       OR "access" IS NULL)
-  AND St_length(St_transform(way, 3857)) > 250
-  AND ("highway" = 'footway')
+                     'bridleway')
+       OR "highway" = 'footway')
+)
+SELECT * FROM temp_query WHERE row_number % 2 <> 0
     """
 
 
