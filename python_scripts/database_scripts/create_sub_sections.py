@@ -110,8 +110,8 @@ def _create_new_line_or_polygon_row(row, geohash, geometry_type):
         else:
             len_or_area_fraction = area_fraction
     elif "line" in geometry_type:
-        # Only insert the row if the length of the intersecting geometry is greater than 0.0015 (for lines)
-        if to_be_inserted_geometry.length < 0.0015:
+        # Only insert the row if the length of the intersecting geometry is greater than 0.001 (for lines)
+        if to_be_inserted_geometry.length < 0.001:
             return
         else:
             len_or_area_fraction = to_be_inserted_geometry.length
@@ -219,8 +219,8 @@ def _create_new_point_row(row, geohash):
 
 # Create dictionaries of source table name + target table name
 tables = [
-    ["planet_osm_polygon", "berlin_polygons"],
-    ["planet_osm_point", "berlin_points"],
+    # ["planet_osm_polygon", "berlin_polygons"],
+    # ["planet_osm_point", "berlin_points"],
     ["planet_osm_line", "berlin_lines"],
 ]
 geo_hashes = []
