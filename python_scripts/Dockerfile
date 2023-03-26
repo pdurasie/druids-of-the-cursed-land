@@ -26,7 +26,4 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 WORKDIR /app
-ADD database_scripts database_scripts
-ADD geohashes geohashes
-ADD wkt wkt
-ADD berlin_data berlin_data
+ADD . .
