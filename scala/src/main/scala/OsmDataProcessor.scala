@@ -1,6 +1,10 @@
 import doobie.*
 import doobie.implicits.*
+import doobie.util.Read
 import cats.effect.*
+import cats.effect.unsafe.implicits.global
+import cats.implicits.catsSyntaxTuple2Semigroupal
+import models.{LineAndPolyRecordDTO, PointDTO}
 import org.locationtech.jts.geom.*
 import org.locationtech.jts.io.WKTReader
 
@@ -8,7 +12,15 @@ import scala.io.Source
 import java.io.File
 import scala.util.Using
 
+import doobie.util.Meta
+import org.locationtech.jts.geom.{Geometry, GeometryFactory}
+import org.locationtech.jts.io.WKTReader
+
 object OsmDataProcessor {
+  implicit val geometryMeta: Meta[Geometry] =
+    Meta[String].timap[Geometry](str => WKTReader().read(str))(
+      geometry => geometry.toText
+    )
   def main(args: Array[String]): Unit = {
     val tables = List(
       ("planet_osm_polygon", "berlin_polygons"),
@@ -51,11 +63,7 @@ object OsmDataProcessor {
         )
       }
 
-      val rows = sql"${SQLCommands
-        .getSqlQuery(sourceTableName, geohash)}"
-        .to[List[()]]
-        .transact(xa)
-        .unsafeRunSync()
+      val rows = getRowsBasedOnSourceTableName(sourceTableName, geohash, xa)
 
       for (row <- rows) {
         val newRow = createNewRow(row, geohash, targetTableName)
@@ -70,6 +78,22 @@ object OsmDataProcessor {
     }
 
     println(s"\nDone processing $sourceTableName.\n")
+  }
+
+  private def getRowsBasedOnSourceTableName(sourceTableName: String,
+                                            geohash: String,
+                                            xa: Transactor[IO]): List[_] = {
+    sourceTableName match {
+      case "planet_osm_point" => getRows[PointDTO](sourceTableName, geohash, xa)
+      case _                  => getRows[LineAndPolyRecordDTO](sourceTableName, geohash, xa)
+    }
+  }
+
+  private def getRows[T: Read](sourceTableName: String,
+                               geohash: String,
+                               xa: Transactor[IO]): List[T] = {
+    val fragment = fr"${SQLCommands.getSqlQuery(sourceTableName, geohash)}"
+    fragment.query[T].to[List].transact(xa).unsafeRunSync()
   }
 
   // Implement the rest of the functions (_createNewRow, _createNewLineOrPolygonRow, _createNewPointRow)
