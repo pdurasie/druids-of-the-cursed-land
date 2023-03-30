@@ -215,8 +215,8 @@ def _create_new_point_row(row, geohash):
 
 # Create dictionaries of source table name + target table name
 tables = [
-    # ["planet_osm_polygon", "berlin_polygons"],
-    # ["planet_osm_point", "berlin_points"],
+    ["planet_osm_polygon", "berlin_polygons"],
+    ["planet_osm_point", "berlin_points"],
     ["planet_osm_line", "berlin_lines"],
 ]
 geo_hashes = []
