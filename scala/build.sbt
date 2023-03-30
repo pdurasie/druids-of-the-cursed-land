@@ -6,3 +6,5 @@ lazy val root = (project in file("."))
   .settings(
     name := "scala"
   )
+
+libraryDependencies += "org.locationtech.jts" % "jts-core" % "1.18.1"
