@@ -3,6 +3,8 @@ import doobie.implicits.*
 import doobie.util.Read
 import cats.effect.*
 import cats.effect.unsafe.implicits.global
+import cats.effect.implicits.concurrentParTraverseOps
+import cats.Parallel
 import cats.implicits.catsSyntaxTuple2Semigroupal
 import models.{DruidsGeometryRecord, GeometryRecord}
 import org.locationtech.jts.geom.*
@@ -15,12 +17,13 @@ import doobie.util.Meta
 import org.locationtech.jts.geom.{Geometry, GeometryFactory}
 import org.locationtech.jts.io.WKTReader
 
-object OsmDataProcessor {
+object OsmDataProcessor extends IOApp {
   implicit val geometryMeta: Meta[Geometry] =
     Meta[String].timap[Geometry](str => WKTReader().read(str))(
       geometry => geometry.toText
     )
-  def main(args: Array[String]): Unit = {
+
+  def main(args: Array[String]): IO[ExitCode] = {
     val tables = List(
       ("planet_osm_polygon", "berlin_polygons"),
       ("planet_osm_point", "berlin_points"),
@@ -34,14 +37,17 @@ object OsmDataProcessor {
       source.getLines().toList
     }.get
 
-    for ((sourceTableName, targetTableName) <- tables) {
-      processOsmData(sourceTableName, targetTableName, geoHashes)
+    val processAllTables = tables.foldLeft(IO.unit) { (acc, tablePair) =>
+      val (sourceTableName, targetTableName) = tablePair
+      acc.flatMap(_ => processOsmData(sourceTableName, targetTableName, geoHashes))
     }
+
+    processAllTables.as(ExitCode.Success)
   }
 
   private def processOsmData(sourceTableName: String,
                              targetTableName: String,
-                             geohashes: List[String]): Unit = {
+                             geohashes: List[String]): IO[Unit] = {
     val xa = Transactor.fromDriverManager[IO](
       "org.postgresql.Driver",
       "jdbc:postgresql://postgis_db:5432/docker",
@@ -49,34 +55,34 @@ object OsmDataProcessor {
       "docker"
     )
 
-    val dropTable = sql"DROP TABLE IF EXISTS $targetTableName".update.run
-    val createTable = sql"${SQLCommands
-      .getTableCreationQuery(targetTableName)}".update.run
+    val setup = for {
+      _ <- sql"DROP TABLE IF EXISTS $targetTableName".update.run.transact(xa)
+      _ <- sql"${SQLCommands.getTableCreationQuery(targetTableName)}".update.run.transact(xa)
+    } yield ()
 
-    (dropTable, createTable).mapN(_ + _).transact(xa).unsafeRunSync()
-
-    for ((geohash, index) <- geohashes.zipWithIndex) {
-      if (index % 1000 == 0) {
-        println(
-          s"Processing $sourceTableName...(${index.toDouble / geohashes.length * 100}%)"
-        )
+    def processGeohash(geohash: String, index: Int): IO[Unit] = {
+      val logProgress = if (index % 1000 == 0) {
+        IO(println(s"Processing $sourceTableName...(${index.toDouble / geohashes.length * 100}%)"))
+      } else {
+        IO.unit
       }
 
-      val rows: List[GeometryRecord] =
-        getRows[GeometryRecord](sourceTableName, geohash, xa)
-
-      for (row <- rows) {
-        val newRow = createNewRow(row, geohash)
-        newRow.foreach { record =>
-          SQLCommands.getInsertCommand(targetTableName, record).update
-            .run
-            .transact(xa)
-            .unsafeRunSync()
+      for {
+        _ <- logProgress
+        rows <- getRows[GeometryRecord](sourceTableName, geohash, xa)
+        _ <- rows.map { row =>
+          createNewRow(row, geohash).map { record =>
+            SQLCommands.getInsertCommand(targetTableName, record).update.run.transact(xa)
+          }
         }
-      }
+      } yield ()
     }
 
-    println(s"\nDone processing $sourceTableName.\n")
+    for {
+      _ <- setup
+      _ <- geohashes.zipWithIndex.parTraverseN(2) { case (geohash, index) => processGeohash(geohash, index) }
+      _ <- IO(println(s"\nDone processing $sourceTableName.\n"))
+    } yield ()
   }
 
   private def createNewRow(row: GeometryRecord,
