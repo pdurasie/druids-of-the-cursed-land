@@ -82,7 +82,7 @@ object Spawner {
 
         val randomGeometry = randomRegionData("geometry").asInstanceOf[Geometry]
         val randomPoint =
-          PointGeneration.generateRandomPointInGeometry(randomGeometry)
+          GeometryUtil.generateRandomPointInGeometry(randomGeometry)
 
         val lat = randomPoint.getY
         val lon = randomPoint.getX
@@ -93,7 +93,7 @@ object Spawner {
 
         val randomGeometry = randomRegionData("geometry").asInstanceOf[Geometry]
         val randomPoint =
-          PointGeneration.generateRandomPointInGeometry(randomGeometry)
+          GeometryUtil.generateRandomPointInGeometry(randomGeometry)
 
         val lat = randomPoint.getY
         val lon = randomPoint.getX
@@ -104,7 +104,7 @@ object Spawner {
 
         val randomGeometry = randomRegionData("geometry").asInstanceOf[Geometry]
         val randomPoint =
-          PointGeneration.generateRandomPointInGeometry(randomGeometry)
+          GeometryUtil.generateRandomPointInGeometry(randomGeometry)
 
         val lat = randomPoint.getY
         val lon = randomPoint.getX
@@ -117,7 +117,7 @@ object Spawner {
         val randomRegionData = Random.shuffle(parkForestRegions).head
         val randomGeometry = randomRegionData("geometry").asInstanceOf[Geometry]
         val randomPoint =
-          PointGeneration.generateRandomPointInGeometry(randomGeometry)
+          GeometryUtil.generateRandomPointInGeometry(randomGeometry)
 
         val lat = randomPoint.getY
         val lon = randomPoint.getX

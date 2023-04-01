@@ -4,14 +4,13 @@ import doobie.util.Read
 import cats.effect.*
 import cats.effect.unsafe.implicits.global
 import cats.implicits.catsSyntaxTuple2Semigroupal
-import models.{LineAndPolyRecordDTO, PointDTO}
+import models.{DruidsGeometryRecord, GeometryRecord}
 import org.locationtech.jts.geom.*
 import org.locationtech.jts.io.WKTReader
 
 import scala.io.Source
 import java.io.File
 import scala.util.Using
-
 import doobie.util.Meta
 import org.locationtech.jts.geom.{Geometry, GeometryFactory}
 import org.locationtech.jts.io.WKTReader
@@ -63,13 +62,13 @@ object OsmDataProcessor {
         )
       }
 
-      val rows = getRowsBasedOnSourceTableName(sourceTableName, geohash, xa)
+      val rows: List[GeometryRecord] =
+        getRows[GeometryRecord](sourceTableName, geohash, xa)
 
       for (row <- rows) {
-        val newRow = createNewRow(row, geohash, targetTableName)
-        newRow.foreach { values =>
-          getInsertCommand(targetTableName)
-            .updateWith(values)
+        val newRow = createNewRow(row, geohash)
+        newRow.foreach { record =>
+          SQLCommands.getInsertCommand(targetTableName, record).update
             .run
             .transact(xa)
             .unsafeRunSync()
@@ -80,13 +79,28 @@ object OsmDataProcessor {
     println(s"\nDone processing $sourceTableName.\n")
   }
 
-  private def getRowsBasedOnSourceTableName(sourceTableName: String,
-                                            geohash: String,
-                                            xa: Transactor[IO]): List[_] = {
-    sourceTableName match {
-      case "planet_osm_point" => getRows[PointDTO](sourceTableName, geohash, xa)
-      case _                  => getRows[LineAndPolyRecordDTO](sourceTableName, geohash, xa)
-    }
+  private def createNewRow(row: GeometryRecord,
+                           geohash: String): Option[DruidsGeometryRecord] = {
+    row.geometry match
+      case _: Point =>
+        Some(DruidsGeometryRecord.fromGeometryRecord(row, geohash))
+      case _: LineString =>
+        Some(createNewLineRow(row, geohash))
+      case _: Polygon =>
+        Some(createNewPolygonRow(row, geohash))
+      case _ => None
+  }
+
+  private def createNewLineRow(row: GeometryRecord,
+                                geohash: String): DruidsGeometryRecord = {
+    val intersectingLineString: Option[LineString] = GeometryUtil.getIntersectingLine(geohash, row.geometry.asInstanceOf[LineString])
+    DruidsGeometryRecord.fromGeometryRecord(row, geohash, intersectingLineString)
+  }
+
+  private def createNewPolygonRow(row: GeometryRecord,
+                               geohash: String): DruidsGeometryRecord = {
+    val intersectingPolygon: Option[Geometry] = GeometryUtil.getIntersectingPolygon(geohash, row.geometry.asInstanceOf[Polygon])
+    DruidsGeometryRecord.fromGeometryRecord(row, geohash, intersectingPolygon)
   }
 
   private def getRows[T: Read](sourceTableName: String,
@@ -95,7 +109,4 @@ object OsmDataProcessor {
     val fragment = fr"${SQLCommands.getSqlQuery(sourceTableName, geohash)}"
     fragment.query[T].to[List].transact(xa).unsafeRunSync()
   }
-
-  // Implement the rest of the functions (_createNewRow, _createNewLineOrPolygonRow, _createNewPointRow)
-  // in Scala using similar logic as the original Python code.
 }

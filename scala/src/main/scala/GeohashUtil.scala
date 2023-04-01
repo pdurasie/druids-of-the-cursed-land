@@ -1,3 +1,8 @@
+import org.locationtech.jts.geom.{Coordinate, Geometry, MultiPolygon, Polygon}
+import org.locationtech.spatial4j.context.jts.JtsSpatialContext
+import org.locationtech.spatial4j.context.SpatialContext
+import org.locationtech.spatial4j.distance.DistanceUtils
+
 object GeohashUtil {
   def getGeohashQuadrants(geohash: String): List[List[String]] = {
     val subdivision = List(
@@ -19,5 +24,30 @@ object GeohashUtil {
       )
 
     quadrants.toList
+  }
+
+  def getPolygonFromGeohash(geohash: String): Option[Polygon] = {
+    val ctx: JtsSpatialContext = JtsSpatialContext.GEO
+
+    Option(ctx.getFormats.read(geohash)).flatMap(shape =>
+      val geohashRect = shape.getBoundingBox
+
+      val minLat = geohashRect.getMinY
+      val minLon = geohashRect.getMinX
+      val maxLat = geohashRect.getMaxY
+      val maxLon = geohashRect.getMaxX
+
+      val coordinates = Array(
+        Coordinate(minLon, minLat),
+        Coordinate(maxLon, minLat),
+        Coordinate(maxLon, maxLat),
+        Coordinate(minLon, maxLat),
+        Coordinate(minLon, minLat)
+      )
+
+      val geometryFactory = org.locationtech.jts.geom.GeometryFactory()
+      val bboxPolygon = geometryFactory.createPolygon(coordinates)
+      Some(bboxPolygon)
+    )
   }
 }
