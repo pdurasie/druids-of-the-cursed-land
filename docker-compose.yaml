@@ -2,7 +2,7 @@ services:
   osm2pgsql:
     build:
       context: osm2pgsql/
-    command: bash -c "sleep 10; /usr/local/bin/osm-importer.sh"
+    entrypoint: /usr/local/bin/osm-entrypoint.sh
     environment:
       PGPASSWORD: docker
       PG_PORT_5432_TCP_ADDR: postgis_db
@@ -16,6 +16,8 @@ services:
     restart: on-failure:2
     networks:
       - docker-network
+    volumes:
+      - osm_data:/osm_data
     #volumes:
     #  - ./berlin.osm.pbf
   postgis_db:
@@ -64,17 +66,41 @@ services:
       - "80:80"
     networks:
       - docker-network
-  app:
-    build: python_scripts/
-    container_name: python_scripts
-    image: my-python-scripts
-    depends_on:
-      - postgis_db
-    ports:
-      - "8081:3000"
+  scala_builder:
+    image: mozilla/sbt:latest
+    command: sbt clean assembly
+    volumes:
+      - ./scala:/app
+      - sbt_cache:/root/.ivy2
+      - sbt_cache:/root/.sbt
     networks:
       - docker-network
+    depends_on:
+      - postgis_db
+    environment:
+      - PGPASSWORD=docker
+      - PG_PORT_5432_TCP_ADDR=postgis_db
+      - PG_PORT_5432_TCP_PORT=5432
+      - PG_ENV_POSTGRES_DB=docker
+      - PG_ENV_POSTGRES_USER=docker
+  scala_runner:
+    image: openjdk:11-jre-slim
+    volumes:
+      - ./scala:/app
+    networks:
+      - docker-network
+    depends_on:
+      - postgis_db
+      - scala_builder
+    environment:
+      - PGPASSWORD=docker
+      - PG_PORT_5432_TCP_ADDR=postgis_db
+      - PG_PORT_5432_TCP_PORT=5432
+      - PG_ENV_POSTGRES_DB=docker
+      - PG_ENV_POSTGRES_USER=docker
 networks:
   docker-network:
 volumes:
   postgis_data:
+  osm_data:
+  sbt_cache:
