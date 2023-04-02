@@ -1,3 +1,5 @@
+package util
+
 import org.locationtech.jts.geom.{Coordinate, Geometry, MultiPolygon, Polygon}
 import org.locationtech.spatial4j.context.jts.JtsSpatialContext
 import org.locationtech.spatial4j.context.SpatialContext

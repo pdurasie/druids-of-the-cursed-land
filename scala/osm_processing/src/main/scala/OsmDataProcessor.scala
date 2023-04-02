@@ -7,6 +7,7 @@ import cats.effect.implicits.concurrentParTraverseOps
 import cats.Parallel
 import cats.implicits.catsSyntaxTuple2Semigroupal
 import models.{DruidsGeometryRecord, GeometryRecord}
+import util.{SQLCommands, GeometryUtil}
 import org.locationtech.jts.geom.*
 import org.locationtech.jts.io.WKTReader
 

@@ -1,3 +1,5 @@
+package util
+
 import doobie.Fragment
 import doobie.implicits.*
 import models.DruidsGeometryRecord

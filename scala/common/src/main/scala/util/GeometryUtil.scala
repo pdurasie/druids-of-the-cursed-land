@@ -1,3 +1,5 @@
+package util
+
 import GeohashUtil.getPolygonFromGeohash
 
 import scala.util.Random

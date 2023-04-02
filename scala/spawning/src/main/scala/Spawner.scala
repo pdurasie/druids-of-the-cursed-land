@@ -9,6 +9,7 @@ import doobie.postgres.implicits.*
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import org.locationtech.jts.io.WKTReader
+import util.GeohashUtil
 
 object Spawner {
   def spawnHerbsInGeohash(geohash: String, xa: Transactor[IO]): Unit = {
