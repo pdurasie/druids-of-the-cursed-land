@@ -6,8 +6,7 @@ import cats.effect.unsafe.implicits.global
 import cats.effect.implicits.concurrentParTraverseOps
 import cats.Parallel
 import cats.implicits.catsSyntaxTuple2Semigroupal
-import models.{DruidsGeometryRecord, GeometryRecord}
-import util.{SQLCommands, GeometryUtil}
+import druids.util.{SQLCommands, GeometryUtil}
 import org.locationtech.jts.geom.*
 import org.locationtech.jts.io.WKTReader
 
@@ -15,6 +14,7 @@ import scala.io.Source
 import java.io.File
 import scala.util.Using
 import doobie.util.Meta
+import druids.models.{DruidsGeometryRecord, GeometryRecord}
 import org.locationtech.jts.geom.{Geometry, GeometryFactory}
 import org.locationtech.jts.io.WKTReader
 

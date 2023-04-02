@@ -1,4 +1,4 @@
-package models
+package druids.models
 
 import doobie._
 import doobie.implicits._

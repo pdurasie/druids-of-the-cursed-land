@@ -1,4 +1,4 @@
-package util
+package druids.util
 
 import GeohashUtil.getPolygonFromGeohash
 

@@ -1,8 +1,8 @@
-package util
+package druids.util
 
 import doobie.Fragment
 import doobie.implicits.*
-import models.DruidsGeometryRecord
+import druids.models.DruidsGeometryRecord
 
 object SQLCommands {
   def getTableCreationQuery(sourceTableName: String): String =

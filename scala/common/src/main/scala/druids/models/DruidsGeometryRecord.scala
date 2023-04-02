@@ -1,4 +1,4 @@
-package models
+package druids.models
 
 import org.locationtech.jts.geom.Geometry
 
