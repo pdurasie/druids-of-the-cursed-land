@@ -1,11 +1,8 @@
 package druids.models
 
 import doobie._
-import doobie.implicits._
-import doobie.postgres._
-import doobie.postgres.implicits._
-import org.locationtech.jts.io.{WKBReader, WKBWriter}
 import org.locationtech.jts.geom.Geometry
+import org.locationtech.jts.io.WKBReader
 
 trait GeometryRecord {
   val osmId: String
@@ -80,68 +77,50 @@ object GeometryRecord {
 
   implicit val geometryRecordRead: Read[GeometryRecord] = {
     Read[
-      (String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       String,
-       Option[String],
-       String,
-       String,
-       String,
-       String,
-       String,
-       Geometry)
+      ((String, String, String, String, String, String, String, String),
+       (String, String, String, String, String, String, String, String),
+       (String, String, String, String, String, String, String, Option[String]),
+       (String, String, String, String, String, Geometry))
     ].map {
       case (
-          osmId: String,
-          access: String,
-          amenity: String,
-          area: String,
-          barrier: String,
-          bicycle: String,
-          brand: String,
-          bridge: String,
-          boundary: String,
-          buildings: String,
-          culvert: String,
-          embankment: String,
-          foot: String,
-          harbour: String,
-          highway: String,
-          landuse: String,
-          leisure: String,
-          lock: String,
-          name: String,
-          natural: String,
-          place: String,
-          surface: String,
-          tourism: String,
-          tracktype: Option[String],
-          watermark: String,
-          waterway: String,
-          wetland: String,
-          wood: String,
-          tags: String,
-          geometry: Geometry
+          (
+            osmId: String,
+            access: String,
+            amenity: String,
+            area: String,
+            barrier: String,
+            bicycle: String,
+            brand: String,
+            bridge: String
+          ),
+          (
+            boundary: String,
+            buildings: String,
+            culvert: String,
+            embankment: String,
+            foot: String,
+            harbour: String,
+            highway: String,
+            landuse: String
+          ),
+          (
+            leisure: String,
+            lock: String,
+            name: String,
+            natural: String,
+            place: String,
+            surface: String,
+            tourism: String,
+            tracktype: Option[String]
+          ),
+          (
+            watermark: String,
+            waterway: String,
+            wetland: String,
+            wood: String,
+            tags: String,
+            geometry: Geometry
+          )
           ) =>
         GeometryRecordImpl(
           osmId,

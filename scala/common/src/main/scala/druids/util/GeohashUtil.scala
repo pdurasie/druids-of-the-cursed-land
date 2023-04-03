@@ -31,7 +31,7 @@ object GeohashUtil {
   def getPolygonFromGeohash(geohash: String): Option[Polygon] = {
     val ctx: JtsSpatialContext = JtsSpatialContext.GEO
 
-    Option(ctx.getFormats.read(geohash)).flatMap(shape =>
+    Option(ctx.getFormats.read(geohash)).flatMap { shape =>
       val geohashRect = shape.getBoundingBox
 
       val minLat = geohashRect.getMinY
@@ -40,16 +40,16 @@ object GeohashUtil {
       val maxLon = geohashRect.getMaxX
 
       val coordinates = Array(
-        Coordinate(minLon, minLat),
-        Coordinate(maxLon, minLat),
-        Coordinate(maxLon, maxLat),
-        Coordinate(minLon, maxLat),
-        Coordinate(minLon, minLat)
+        new Coordinate(minLon, minLat),
+        new Coordinate(maxLon, minLat),
+        new Coordinate(maxLon, maxLat),
+        new Coordinate(minLon, maxLat),
+        new Coordinate(minLon, minLat)
       )
 
-      val geometryFactory = org.locationtech.jts.geom.GeometryFactory()
+      val geometryFactory = new org.locationtech.jts.geom.GeometryFactory()
       val bboxPolygon = geometryFactory.createPolygon(coordinates)
       Some(bboxPolygon)
-    )
+    }
   }
 }

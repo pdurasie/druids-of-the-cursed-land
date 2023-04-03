@@ -1,7 +1,6 @@
 import cats.effect.unsafe.implicits.global
 import cats.effect.{IO, IOApp}
 import cats.implicits._
-import cats.implicits.catsSyntaxParallelTraverse1
 import doobie.Transactor
 import doobie.implicits._
 import druids.util.{GeohashUtil, GeometryUtil}
@@ -13,7 +12,7 @@ import scala.io.Source
 import scala.util.{Random, Using}
 
 object Spawner extends IOApp.Simple {
-  def main(args: Array[String]): IO[Unit] = {
+  override def run(): IO[Unit] = {
     val transactor = Transactor.fromDriverManager[IO](
       "org.postgresql.Driver",
       "jdbc:postgresql://postgis_db:5432/docker",
@@ -27,19 +26,20 @@ object Spawner extends IOApp.Simple {
       source.getLines().toList
     }.get
 
-    geohashes.parTraverse { geohash =>
+    geohashes.traverse { geohash =>
       spawnHerbsInGeohash(geohash, transactor)
-    }
+    }.void
 
   }
-  def spawnHerbsInGeohash(geohash: String, xa: Transactor[IO]): Unit = {
+  private def spawnHerbsInGeohash(geohash: String,
+                                  xa: Transactor[IO]): IO[Unit] = {
     // Get all the neighbor pairs of inner geohashes
     val neighborPairs = GeohashUtil.getGeohashQuadrants(geohash)
 
     val wktReader = new WKTReader()
 
     // Go through all the neighbor pairs
-    for (quadrant <- neighborPairs) {
+    neighborPairs.traverse_ { quadrant =>
       // Read the records from the database which are within the quadrant geohashes
       val query = sql"""
     (
@@ -76,7 +76,7 @@ object Spawner extends IOApp.Simple {
         )
       }
 
-      if (data.isEmpty) return
+      if (data.isEmpty) IO.unit
 
       val parkForestRegions = data
         .filter(
@@ -143,7 +143,9 @@ object Spawner extends IOApp.Simple {
         val lat = randomPoint.getY
         val lon = randomPoint.getX
 
-        insertHerbIntoDatabase(lat, lon, xa)
+        insertHerbIntoDatabase(lat, lon, xa).void
+      } else {
+        IO.unit
       }
     }
   }
@@ -157,6 +159,6 @@ object Spawner extends IOApp.Simple {
       VALUES (ST_SetSRID(ST_MakePoint($longitude, $latitude), 4326))
     """.update
 
-    insertQuery.run.transact(xa)
+    insertQuery.run.transact(xa).void
   }
 }
