@@ -1,3 +1,5 @@
+package druids
+
 import cats.effect.unsafe.implicits.global
 import cats.effect.{IO, IOApp}
 import cats.implicits._
@@ -21,7 +23,7 @@ object Spawner extends IOApp.Simple {
     )
     val geohashes: List[String] = Using(
       Source
-        .fromFile("berlin_data/geohashes_berlin_7.csv") //TODO this needs to be more flexible
+        .fromFile("../berlin_data/geohashes_berlin_7.csv") //TODO this needs to be more flexible
     ) { source =>
       source.getLines().toList
     }.get

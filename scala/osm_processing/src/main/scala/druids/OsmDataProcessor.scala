@@ -1,7 +1,9 @@
+package druids
+
 import cats.effect.{ExitCode, IO, IOApp}
 import cats.implicits._
-import doobie.implicits._
 import doobie.Transactor
+import doobie.implicits._
 import doobie.util.Read
 import doobie.util.meta.Meta
 import druids.models.{DruidsGeometryRecord, GeometryRecord}
@@ -28,7 +30,7 @@ object OsmDataProcessor extends IOApp {
 
     val geoHashes: List[String] = Using(
       Source
-        .fromFile("berlin_data/geohashes_berlin_7.csv") //TODO this needs to be more flexible
+        .fromFile("../berlin_data/geohashes_berlin_7.csv") //TODO this needs to be more flexible
     ) { source =>
       source.getLines().toList
     }.get

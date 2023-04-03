@@ -35,4 +35,7 @@ lazy val spawning = (project in file("spawning"))
   )
 
 enablePlugins(PackPlugin)
-packMain := Map("process-osm" -> "OsmDataProcessor", "spawn-herbs" -> "Spawner")
+packMain := Map(
+  "process-osm" -> "druids.OsmDataProcessor",
+  "spawn-herbs" -> "druids.Spawner"
+)
