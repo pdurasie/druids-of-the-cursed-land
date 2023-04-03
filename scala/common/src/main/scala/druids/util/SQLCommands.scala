@@ -1,7 +1,7 @@
 package druids.util
 
 import doobie.Fragment
-import doobie.implicits.*
+import doobie.implicits._
 import druids.models.DruidsGeometryRecord
 
 object SQLCommands {
@@ -288,14 +288,14 @@ object SQLCommands {
     val columns = fr"""
   osm_id, geohash, access, amenity, area, barrier, bicycle, brand, bridge, boundary,
   building, culvert, embankment, foot, harbour, highway, landuse, leisure, lock,
-  name, "natural", place, surface, tourism, water, waterway, wetland,
+  name, "natural", place, surface, tourism, waterway, wetland,
   wood, tags, way
   """
 
     fr"INSERT INTO " ++ Fragment.const(tableName) ++ fr"(" ++ columns ++ fr") VALUES (" ++
       fr"${r.osmId}, ${r.geohash}, ${r.access}, ${r.amenity}, ${r.area}, ${r.barrier}, ${r.bicycle}, ${r.brand}, ${r.bridge}, ${r.boundary}," ++
       fr"${r.buildings}, ${r.culvert}, ${r.embankment}, ${r.foot}, ${r.harbour}, ${r.highway}, ${r.landuse}, ${r.leisure}, ${r.lock}," ++
-      fr"${r.name}, ${r.natural}, ${r.place}, ${r.surface}, ${r.tourism}, ${r.water}, ${r.waterway}, ${r.wetland}, ${r.wood}, ${r.tags}," ++
+      fr"${r.name}, ${r.natural}, ${r.place}, ${r.surface}, ${r.tourism},  ${r.waterway}, ${r.wetland}, ${r.wood}, ${r.tags}," ++
       fr"ST_SetSRID(ST_GeomFromText(${r.geometry.toString}), 4326)" ++ fr")"
   }
 
@@ -309,14 +309,14 @@ object SQLCommands {
     val columns = fr"""
   osm_id, geohash, access, amenity, area, barrier, bicycle, brand, bridge, boundary,
   building, culvert, embankment, foot, harbour, highway, landuse, leisure, lock,
-  name, "natural", place, surface, tourism, tracktype, water, waterway, wetland,
+  name, "natural", place, surface, tourism, tracktype, waterway, wetland,
   wood, tags, """ ++ Fragment.const(columnName) ++ fr", way"
 
     fr"INSERT INTO " ++ Fragment.const(tableName) ++ fr"(" ++ columns ++ fr") VALUES (" ++
       fr"${r.osmId}, ${r.geohash}, ${r.access}, ${r.amenity}, ${r.area}, ${r.barrier}, ${r.bicycle}, ${r.brand}, ${r.bridge}, ${r.boundary}," ++
       fr"${r.buildings}, ${r.culvert}, ${r.embankment}, ${r.foot}, ${r.harbour}, ${r.highway}, ${r.landuse}, ${r.leisure}, ${r.lock}," ++
       fr"${r.name}, ${r.natural}, ${r.place}, ${r.surface}, ${r.tourism}, ${r.tracktype
-        .getOrElse("null")}, ${r.water}, ${r.waterway}, ${r.wetland}, ${r.wood}, ${r.tags}," ++
+        .getOrElse("null")}, ${r.waterway}, ${r.wetland}, ${r.wood}, ${r.tags}," ++
       fr"ST_SetSRID(ST_GeomFromText(${r.geometry.toString}), 4326)" ++ fr")"
   }
 

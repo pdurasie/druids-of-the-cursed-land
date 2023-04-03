@@ -1,30 +1,24 @@
-import doobie.*
-import doobie.implicits.*
+import cats.effect.{ExitCode, IO, IOApp}
+import cats.implicits._
+import doobie.implicits._
+import doobie.Transactor
 import doobie.util.Read
-import cats.effect.*
-import cats.effect.unsafe.implicits.global
-import cats.effect.implicits.concurrentParTraverseOps
-import cats.Parallel
-import cats.implicits.catsSyntaxTuple2Semigroupal
-import druids.util.{SQLCommands, GeometryUtil}
-import org.locationtech.jts.geom.*
+import doobie.util.meta.Meta
+import druids.models.{DruidsGeometryRecord, GeometryRecord}
+import druids.util.{GeometryUtil, SQLCommands}
+import org.locationtech.jts.geom.{Geometry, LineString, Point, Polygon}
 import org.locationtech.jts.io.WKTReader
 
 import scala.io.Source
-import java.io.File
 import scala.util.Using
-import doobie.util.Meta
-import druids.models.{DruidsGeometryRecord, GeometryRecord}
-import org.locationtech.jts.geom.{Geometry, GeometryFactory}
-import org.locationtech.jts.io.WKTReader
 
 object OsmDataProcessor extends IOApp {
   implicit val geometryMeta: Meta[Geometry] =
-    Meta[String].timap[Geometry](str => WKTReader().read(str))(
+    Meta[String].timap[Geometry](str => new WKTReader().read(str))(
       geometry => geometry.toText
     )
 
-  def main(args: Array[String]): IO[ExitCode] = {
+  def run(args: Array[String]): IO[ExitCode] = {
     // TODO make this more flexible
     val tables = List(
       ("planet_osm_polygon", "berlin_polygons"),
@@ -41,7 +35,9 @@ object OsmDataProcessor extends IOApp {
 
     val processAllTables = tables.foldLeft(IO.unit) { (acc, tablePair) =>
       val (sourceTableName, targetTableName) = tablePair
-      acc.flatMap(_ => processOsmData(sourceTableName, targetTableName, geoHashes))
+      acc.flatMap(
+        _ => processOsmData(sourceTableName, targetTableName, geoHashes)
+      )
     }
 
     processAllTables.as(ExitCode.Success)
@@ -57,14 +53,19 @@ object OsmDataProcessor extends IOApp {
       "docker"
     )
 
-    val setup = for {
+    val setup: IO[Unit] = for {
       _ <- sql"DROP TABLE IF EXISTS $targetTableName".update.run.transact(xa)
-      _ <- sql"${SQLCommands.getTableCreationQuery(targetTableName)}".update.run.transact(xa)
+      _ <- sql"${SQLCommands.getTableCreationQuery(targetTableName)}".update.run
+        .transact(xa)
     } yield ()
 
     def processGeohash(geohash: String, index: Int): IO[Unit] = {
-      val logProgress = if (index % 1000 == 0) {
-        IO(println(s"Processing $sourceTableName...(${index.toDouble / geohashes.length * 100}%)"))
+      val logProgress: IO[Unit] = if (index % 1000 == 0) {
+        IO(
+          println(
+            s"Processing $sourceTableName...(${index.toDouble / geohashes.length * 100}%)"
+          )
+        )
       } else {
         IO.unit
       }
@@ -72,24 +73,30 @@ object OsmDataProcessor extends IOApp {
       for {
         _ <- logProgress
         rows <- getRows[GeometryRecord](sourceTableName, geohash, xa)
-        _ <- rows.map { row =>
+        _ <- rows.traverse { row =>
           createNewRow(row, geohash).map { record =>
-            SQLCommands.getInsertCommand(targetTableName, record).update.run.transact(xa)
+            SQLCommands
+              .getInsertCommand(targetTableName, record)
+              .update
+              .run
+              .transact(xa)
           }
         }
       } yield ()
-    }
 
-    for {
-      _ <- setup
-      _ <- geohashes.zipWithIndex.parTraverseN(2) { case (geohash, index) => processGeohash(geohash, index) }
-      _ <- IO(println(s"\nDone processing $sourceTableName.\n"))
-    } yield ()
+      for {
+        _ <- setup
+        _ <- geohashes.zipWithIndex.traverse {
+          case (geohash, index) => processGeohash(geohash, index)
+        }
+        _ <- IO(println(s"\nDone processing $sourceTableName.\n"))
+      } yield ()
+    }
   }
 
   private def createNewRow(row: GeometryRecord,
                            geohash: String): Option[DruidsGeometryRecord] = {
-    row.geometry match
+    row.geometry match {
       case _: Point =>
         Some(DruidsGeometryRecord.fromGeometryRecord(row, geohash))
       case _: LineString =>
@@ -97,23 +104,30 @@ object OsmDataProcessor extends IOApp {
       case _: Polygon =>
         Some(createNewPolygonRow(row, geohash))
       case _ => None
+    }
   }
 
   private def createNewLineRow(row: GeometryRecord,
-                                geohash: String): DruidsGeometryRecord = {
-    val intersectingLineString: Option[LineString] = GeometryUtil.getIntersectingLine(geohash, row.geometry.asInstanceOf[LineString])
-    DruidsGeometryRecord.fromGeometryRecord(row, geohash, intersectingLineString)
+                               geohash: String): DruidsGeometryRecord = {
+    val intersectingLineString: Option[LineString] = GeometryUtil
+      .getIntersectingLine(geohash, row.geometry.asInstanceOf[LineString])
+    DruidsGeometryRecord.fromGeometryRecord(
+      row,
+      geohash,
+      intersectingLineString
+    )
   }
 
   private def createNewPolygonRow(row: GeometryRecord,
-                               geohash: String): DruidsGeometryRecord = {
-    val intersectingPolygon: Option[Geometry] = GeometryUtil.getIntersectingPolygon(geohash, row.geometry.asInstanceOf[Polygon])
+                                  geohash: String): DruidsGeometryRecord = {
+    val intersectingPolygon: Option[Geometry] = GeometryUtil
+      .getIntersectingPolygon(geohash, row.geometry.asInstanceOf[Polygon])
     DruidsGeometryRecord.fromGeometryRecord(row, geohash, intersectingPolygon)
   }
 
-  private def getRows[T: Read](sourceTableName: String,
-                               geohash: String,
-                               xa: Transactor[IO]): List[T] = {
+  def getRows[T](sourceTableName: String, geohash: String, xa: Transactor[IO])(
+    implicit read: Read[T]
+  ): IO[List[T]] = {
     val fragment = fr"${SQLCommands.getSqlQuery(sourceTableName, geohash)}"
     fragment.query[T].to[List].transact(xa).unsafeRunSync()
   }

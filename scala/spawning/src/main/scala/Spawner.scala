@@ -1,22 +1,42 @@
-import scala.util.Random
+import cats.effect.unsafe.implicits.global
+import cats.effect.{IO, IOApp}
+import cats.implicits._
+import cats.implicits.catsSyntaxParallelTraverse1
+import doobie.Transactor
+import doobie.implicits._
+import druids.util.{GeohashUtil, GeometryUtil}
 import org.locationtech.jts.geom.Geometry
+import org.locationtech.jts.io.WKTReader
 
 import scala.collection.mutable.ListBuffer
-import doobie.*
-import doobie.implicits.*
-import doobie.postgres.*
-import doobie.postgres.implicits.*
-import cats.effect.IO
-import cats.effect.unsafe.implicits.global
-import org.locationtech.jts.io.WKTReader
-import druids.util.GeohashUtil
+import scala.io.Source
+import scala.util.{Random, Using}
 
-object Spawner {
+object Spawner extends IOApp.Simple {
+  def main(args: Array[String]): IO[Unit] = {
+    val transactor = Transactor.fromDriverManager[IO](
+      "org.postgresql.Driver",
+      "jdbc:postgresql://postgis_db:5432/docker",
+      "docker",
+      "docker"
+    )
+    val geohashes: List[String] = Using(
+      Source
+        .fromFile("berlin_data/geohashes_berlin_7.csv") //TODO this needs to be more flexible
+    ) { source =>
+      source.getLines().toList
+    }.get
+
+    geohashes.parTraverse { geohash =>
+      spawnHerbsInGeohash(geohash, transactor)
+    }
+
+  }
   def spawnHerbsInGeohash(geohash: String, xa: Transactor[IO]): Unit = {
     // Get all the neighbor pairs of inner geohashes
     val neighborPairs = GeohashUtil.getGeohashQuadrants(geohash)
 
-    val wktReader = WKTReader()
+    val wktReader = new WKTReader()
 
     // Go through all the neighbor pairs
     for (quadrant <- neighborPairs) {
@@ -130,13 +150,13 @@ object Spawner {
 
   private def insertHerbIntoDatabase(latitude: Double,
                                      longitude: Double,
-                                     xa: Transactor[IO]): Unit = {
+                                     xa: Transactor[IO]): IO[Unit] = {
     val insertQuery =
       sql"""
-        INSERT INTO herbs (location)
-        VALUES (ST_SetSRID(ST_MakePoint($longitude, $latitude), 4326))
-      """.update
+      INSERT INTO herbs (location)
+      VALUES (ST_SetSRID(ST_MakePoint($longitude, $latitude), 4326))
+    """.update
 
-    insertQuery.run.transact(xa).unsafeRunSync()
+    insertQuery.run.transact(xa)
   }
 }
