@@ -66,38 +66,12 @@ services:
       - "80:80"
     networks:
       - docker-network
-  scala_builder:
-    image: mozilla/sbt:latest
-    command: sbt clean assembly
-    volumes:
-      - ./scala:/app
-      - sbt_cache:/root/.ivy2
-      - sbt_cache:/root/.sbt
-    networks:
-      - docker-network
-    depends_on:
-      - postgis_db
-    environment:
-      - PGPASSWORD=docker
-      - PG_PORT_5432_TCP_ADDR=postgis_db
-      - PG_PORT_5432_TCP_PORT=5432
-      - PG_ENV_POSTGRES_DB=docker
-      - PG_ENV_POSTGRES_USER=docker
   scala_runner:
-    image: openjdk:11-jre-slim
-    volumes:
-      - ./scala:/app
+    build:
+      context: scala/
+      dockerfile: Dockerfile
     networks:
       - docker-network
-    depends_on:
-      - postgis_db
-      - scala_builder
-    environment:
-      - PGPASSWORD=docker
-      - PG_PORT_5432_TCP_ADDR=postgis_db
-      - PG_PORT_5432_TCP_PORT=5432
-      - PG_ENV_POSTGRES_DB=docker
-      - PG_ENV_POSTGRES_USER=docker
 networks:
   docker-network:
 volumes:
