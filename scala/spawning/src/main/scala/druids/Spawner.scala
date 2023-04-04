@@ -28,9 +28,12 @@ object Spawner extends IOApp.Simple {
       source.getLines().toList
     }.get
 
-    geohashes.traverse { geohash =>
-      spawnHerbsInGeohash(geohash, transactor)
-    }.void
+    geohashes
+      .take(500)
+      .traverse { geohash =>
+        spawnHerbsInGeohash(geohash, transactor)
+      }
+      .void
 
   }
   private def spawnHerbsInGeohash(geohash: String,

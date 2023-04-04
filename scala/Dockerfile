@@ -6,6 +6,9 @@ COPY . .
 
 RUN sbt pack
 
+RUN apt-get update && apt-get install -y make
+RUN sbt packInstall
+
 FROM anapsix/alpine-java:8u131b11_jdk
 
 COPY --from=scala_builder /app/target/pack /srv/myapp

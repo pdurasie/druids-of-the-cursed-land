@@ -21,7 +21,7 @@ services:
     #volumes:
     #  - ./berlin.osm.pbf
   postgis_db:
-    image: postgis/postgis
+    image: ghcr.io/baosystems/postgis:15-3.3
     command:
       # See https://osm2pgsql.org/doc/manual.html#tuning-the-postgresql-server
       - "postgres"
@@ -70,6 +70,7 @@ services:
     build:
       context: scala/
       dockerfile: Dockerfile
+    command: tail -f /dev/null
     networks:
       - docker-network
 networks:
