@@ -1,4 +1,4 @@
-FROM hseeberger/scala-sbt:11.0.6_1.3.10_2.13.1 as scala_builder
+FROM hseeberger/scala-sbt:17.0.2_1.6.2_3.1.1 as scala_builder
 
 WORKDIR /app
 
